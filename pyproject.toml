@@ -1,0 +1,39 @@
+[project]
+name = "music-taste-intelligence"
+version = "0.1.0"
+description = "CLAP embeddings vs. classical audio features for music retrieval and cold-start taste profiles"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "librosa",
+    "soundfile",
+    "tqdm",
+    "requests",
+    "pyarrow",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ipykernel",
+    "jupyter",
+]
+clap = [
+    "torch",
+    "laion-clap",
+]
+api = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/music_taste"]

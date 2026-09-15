@@ -1,8 +1,8 @@
-# Music Taste Intelligence — project plan (v3)
+# Music Taste Intelligence — project plan (v4)
 
-**Core thesis:** How effective are frozen CLAP embeddings versus classical audio features for music retrieval, and can they support useful cold-start taste profiles from a small set of user-selected seed tracks?
+**Core thesis:** How effective are frozen CLAP embeddings versus classical audio features for music retrieval, and can they support useful cold-start taste profiles from a small set of pairwise user preferences?
 
-This version tightens the experimental design: retrieval (not classification) is the primary comparison, personalization is quantified rather than eyeballed, and the project is set up to report an honest result — including one where CLAP loses on some dimension.
+This version keeps v3's honest, symmetric retrieval design and replaces direct seed-track selection with pairwise preference elicitation (A/B picks) as the personalization signal — a richer, more naturally-collected input that also opens up a negative-signal extension in Week 9.
 
 **Dataset:** MTG-Jamendo (primary) — chosen over FMA/GTZAN because it has native multi-label genre/instrument/mood/theme tags across 55,000+ full tracks, and it's the current standard benchmark for CLAP-vs-baseline-encoder comparisons in recent autotagging research. GTZAN can be used as a small, fast sanity-check subset early on if you want a quicker iteration loop before running on the full dataset.
 
@@ -15,7 +15,7 @@ This version tightens the experimental design: retrieval (not classification) is
 **Goal:** Lock the thesis and get data flowing.
 
 - Write the thesis statement (above) at the top of the README
-- Define the MVP: symmetric retrieval comparison (classical vs. CLAP) + seed-count ablation + API. Everything else is stretch.
+- Define the MVP: symmetric retrieval comparison (classical vs. CLAP) + pairwise preference ablation + API. Everything else is stretch.
 - Set up repo structure, README skeleton
 - Download MTG-Jamendo (start with a manageable subset, e.g. the `top50` tag split, or a genre-only slice if the full 55k tracks is too much to iterate on quickly)
 - Optionally grab GTZAN as a tiny fast-iteration sanity-check set
@@ -64,16 +64,17 @@ This version tightens the experimental design: retrieval (not classification) is
 
 ---
 
-## Week 5 — Seed-track taste profile + seed-count ablation
+## Week 5 — Pairwise preference elicitation → taste profile
 
-**Goal:** Quantify cold-start personalization instead of eyeballing it.
+**Goal:** Quantify cold-start personalization from pairwise choices instead of a directly-picked seed list.
 
-- Build the taste-profile function: aggregate N user-selected seed tracks into one taste vector (mean or weighted mean)
-- Run the seed-count ablation: test profiles built from 1, 3, 5, 10, and 20 seed tracks, measuring Recall@K/NDCG@K at each size against a held-out relevant set
-- This answers a real question: how much explicit input does a useful cold-start profile actually need?
-- No fabricated interaction data — seed tracks are the only signal, and that's stated plainly in the README
+- **Pair selection:** sample pairs from tracks spanning different genre/mood tag clusters (stratify by top-level tag, not fully random) so each pair carries a meaningful signal
+- **Elicitation:** show 5–10 A/B pairs, record only the **chosen** track per round (rejected track is not used yet — see Week 9)
+- **Profile construction:** taste vector = mean of chosen tracks' embeddings (positive-only) — structurally the same math as a plain seed-mean, just sourced via pairwise picks instead of a direct list
+- **Ablation:** number of pairwise rounds (5 vs 10), measuring Recall@K/NDCG@K at each against a held-out relevant set — this answers "how many A/B rounds does a useful cold-start profile actually need?"
+- No fabricated interaction data — the pairwise choices are the only signal, and that's stated plainly in the README
 
-**Deliverable:** Seed-count ablation results (a small table or chart: N seeds → retrieval quality), taste-profile function.
+**Deliverable:** Pairwise elicitation logic (pair sampling + choice recording), positive-only taste-profile function, rounds ablation (5 vs 10 → retrieval quality).
 
 ---
 
@@ -81,7 +82,11 @@ This version tightens the experimental design: retrieval (not classification) is
 
 **Goal:** Wrap the winning pipeline in a live API.
 
-- FastAPI service: `/tag` (zero-shot tagging), `/profile` (build taste profile from seed tracks), `/recommend` (retrieval from profile)
+- FastAPI service:
+  - `/tag` — zero-shot tagging
+  - `/pairs` — serves the next A/B pair to show (sampled from diverse clusters)
+  - `/profile` — builds a taste profile from a submitted list of chosen tracks (from pairwise rounds)
+  - `/recommend` — retrieval from profile
 - Explicit Dockerfile
 - Deploy to Cloud Run free tier or Hugging Face Spaces
 - Confirm live URL works end-to-end
@@ -95,7 +100,7 @@ This version tightens the experimental design: retrieval (not classification) is
 **Goal:** Automate deployment, test things that actually matter for an ML system.
 
 - GitHub Actions: test → build → deploy on merge to `main`
-- Tests should check ML invariants: embedding shape/dtype, API response schema, a known seed-track set returns expected genre tags within tolerance
+- Tests should check ML invariants: embedding shape/dtype, API response schema, a known set of pairwise choices returns expected genre tags within tolerance
 - Structured logging for requests/responses — this covers most of what you'd want from monitoring without needing Grafana as a hard requirement
 
 **Deliverable:** `.github/workflows/deploy.yml`, passing CI, test suite covering real invariants.
@@ -106,24 +111,25 @@ This version tightens the experimental design: retrieval (not classification) is
 
 **Goal:** Make it demoable and visually memorable.
 
-- Simple Streamlit/HTML frontend: pick seed tracks → see taste profile → see recommendations
+- Simple Streamlit/HTML frontend: **answer 5–10 A/B picks → see taste profile → see recommendations**
 - UMAP taste-map as a visualization layer only — kept explicitly separate from the retrieval algorithm itself, in both code and README
 - Record a 2–3 minute demo video
-- Finalize README: thesis statement, architecture diagram, retrieval-vs-classification results table, seed-count ablation chart, setup instructions, an honest "what we found" section (including anywhere the result was mixed or surprising)
+- Finalize README: thesis statement, architecture diagram, retrieval-vs-classification results table, pairwise-rounds ablation chart, setup instructions, an honest "what we found" section (including anywhere the result was mixed or surprising)
 
 **Deliverable:** Public demo + video + polished README. **Portfolio-ready stopping point.**
 
 ---
 
-## Week 9 (stretch) — Deeper evaluation, basic monitoring
+## Week 9 (stretch) — Deeper evaluation, contrastive profile, basic monitoring
 
 **Goal:** Only if Weeks 1–8 are solid.
 
 - If skipped in Week 4: run the human relevance-judgment eval now
+- **Contrastive taste profile:** extend Week 5's pairwise signal to use the rejected track too — profile = mean(chosen) − λ·mean(rejected), tested at 1–2 λ values, compared against the Week 5 positive-only baseline on the same ablation grid
 - Basic metrics dashboard (Grafana optional, not mandatory — structured logs plus a simple latency/error metrics endpoint is enough for the core story)
 - Simple reranking/diversification on top of raw similarity retrieval, if time allows
 
-**Deliverable:** Optional — deeper eval results, lightweight monitoring.
+**Deliverable:** Optional — deeper eval results, contrastive-vs-positive-only comparison, lightweight monitoring.
 
 ---
 
@@ -133,18 +139,17 @@ This version tightens the experimental design: retrieval (not classification) is
 
 ---
 
-## What changed from v2 to v3
+## What changed from v3 to v4
 
-| Area | v2 | v3 |
+| Area | v3 | v4 |
 |---|---|---|
-| Thesis | Framed around cold-start personalization broadly | Explicitly names the two experiments: representation quality + cold-start profile size |
-| Primary comparison | Classical (supervised classifier) vs. CLAP (zero-shot) | Symmetric: both representations evaluated on retrieval; classification kept as secondary |
-| Personalization eval | Manual sanity-check on a few seed sets | Quantified seed-count ablation (1/3/5/10/20 seeds → Recall@K/NDCG@K) |
-| Retrieval ground truth | Genre/tag agreement only | Genre/tag agreement (primary) + optional small human relevance-judgment set |
-| Result framing | Implicitly expects CLAP to win | Explicitly designed to report a mixed result if that's what's found |
-| Dataset | FMA or GTZAN | MTG-Jamendo (confirmed as current standard for this exact comparison) |
-| Spotify | Week 10 stretch | Moved to Future Work, not part of the numbered plan |
-| Monitoring | Grafana in Week 9 | Structured logging is sufficient; Grafana optional, not mandatory |
+| Personalization input | User directly selects N seed tracks from a list | User answers 5–10 pairwise A/B preference rounds; chosen tracks become the effective seed set |
+| Profile construction | Mean/weighted mean of picked seed tracks | Mean of chosen tracks from pairwise rounds (positive-only) — same math, different source |
+| Ablation variable | Seed count (1/3/5/10/20) → Recall@K/NDCG@K | Number of pairwise rounds (5 vs 10) → Recall@K/NDCG@K |
+| Negative signal | Not present | Deferred to Week 9: contrastive profile using rejected tracks (mean(chosen) − λ·mean(rejected)) |
+| API | `/profile` takes a seed-track list | `/pairs` serves next A/B comparison; `/profile` takes chosen-track list from pairwise rounds |
+| Frontend flow | Pick seed tracks → see profile → see recs | Answer A/B picks → see profile → see recs |
+| Week 9 scope | Human eval, monitoring, reranking | Same, plus contrastive profile variant added |
 
 ## Weekly checkpoint question
 
