@@ -16,7 +16,7 @@ Full week-by-week plan: [`plan.md`](plan.md).
 
 ## Dataset
 
-[MTG-Jamendo](https://github.com/MTG/mtg-jamendo-dataset) — 55,000+ full tracks with native multi-label genre/instrument/mood/theme tags, the current standard benchmark for CLAP-vs-baseline-encoder comparisons. Starting with a manageable subset (see `scripts/download_data.md`). GTZAN available as an optional tiny sanity-check set for fast iteration.
+[MTG-Jamendo](https://github.com/MTG/mtg-jamendo-dataset) — 55,000+ full tracks with native multi-label genre/instrument/mood/theme tags, the current standard benchmark for CLAP-vs-baseline-encoder comparisons. Working with a 1,143-track slice for now (`bash scripts/download_mtg_subset.sh` to reproduce); see `scripts/download_data.md` for what's downloaded and why.
 
 ## Project layout
 
@@ -39,4 +39,4 @@ uv sync --group api     # + fastapi, uvicorn (Week 6)
 
 ## Status
 
-Week 1 — repo scaffolded, environment set up. Dataset download scope not yet decided. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for decisions made and progress so far, and `plan.md` for the full roadmap (including the "Weekly checkpoint question" honesty check).
+Week 1 — repo scaffolded, environment set up, dataset downloaded and verified. Colab/Kaggle GPU setup still pending. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for decisions made and progress so far, and `plan.md` for the full roadmap (including the "Weekly checkpoint question" honesty check).
